@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+*.log
+*.dump
+
+# Scripts locais ainda contêm dados pessoais e senhas de exemplo.
+backend/database/
+EXPLICAÇÕES DE FUNÇÕES/
+EXPLICAÇOES DE FUNÇOES/
+*.pptx
+*.mwb
+

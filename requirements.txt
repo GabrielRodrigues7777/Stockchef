@@ -1,0 +1,8 @@
+flask
+flask-sqlalchemy
+pymysql
+werkzeug
+google-generativeai
+
+gunicorn; sys_platform != 'win32'
+waitress; sys_platform == 'win32'
