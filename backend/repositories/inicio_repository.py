@@ -2,28 +2,51 @@ from sqlalchemy import text
 from backend.models.usuario import db
 from backend.repositories.estoque_repository import EstoqueRepository
 
-
 class InicioRepository:
-    """Executa as procedures do banco relacionadas ao módulo Início."""
+    """Executa consultas SQL do banco relacionadas ao módulo Início."""
 
     @staticmethod
     def get_resumo(id_usuario):
         """
-        Executa sp_inicio_total_cadastrados, sp_inicio_total_estoque_baixo
-        e sp_inicio_total_vencendo_7_dias para o usuário logado.
+        Consulta os totais de produtos e de estoque baixo
+        e de lotes vencendo para o usuario logado.
         """
         cadastrados = db.session.execute(
-            text("CALL sp_inicio_total_cadastrados(:id)"),
+            text("""
+SELECT COUNT(*) AS total_itens_cadastrados
+    FROM produtos
+    WHERE id_usuario = :id
+      AND ativo = TRUE;
+"""),
             {"id": id_usuario}
         ).mappings().first()
 
         estoque_baixo = db.session.execute(
-            text("CALL sp_inicio_total_estoque_baixo(:id)"),
+            text("""
+SELECT COUNT(*) AS total_itens_estoque_baixo
+    FROM (
+        SELECT p.id_produto
+        FROM produtos p
+        LEFT JOIN lotes l ON p.id_produto = l.id_produto
+        WHERE p.id_usuario = :id
+          AND p.ativo = TRUE
+        GROUP BY p.id_produto, p.estoque_minimo
+        HAVING COALESCE(SUM(l.quantidade_atual), 0) < p.estoque_minimo
+    ) AS produtos_abaixo_do_minimo;
+"""),
             {"id": id_usuario}
         ).mappings().first()
 
         vencendo_7_dias = db.session.execute(
-            text("CALL sp_inicio_total_vencendo_7_dias(:id)"),
+            text("""
+SELECT COUNT(*) AS total_lotes_vencendo_7_dias
+    FROM lotes l
+    INNER JOIN produtos p ON l.id_produto = p.id_produto
+    WHERE p.id_usuario = :id
+      AND p.ativo = TRUE
+      AND l.quantidade_atual > 0
+      AND l.validade <= (CURRENT_DATE + 7);
+"""),
             {"id": id_usuario}
         ).mappings().first()
 
@@ -62,12 +85,28 @@ class InicioRepository:
     @staticmethod
     def get_vencendo_7_dias(id_usuario):
         """
-        Executa sp_inicio_total_vencendo_7_dias_lista e retorna a lista de
+        Retorna a lista de
         lotes que vencem nos próximos 7 dias (incluindo hoje) para o
         usuário logado.
         """
         resultado = db.session.execute(
-            text("CALL sp_inicio_total_vencendo_7_dias_lista(:id)"),
+            text("""
+SELECT
+        l.id_lote,
+        l.id_produto,
+        p.nome AS produto,
+        l.numero_lote,
+        l.validade,
+        l.quantidade_atual,
+        l.custo_unitario
+    FROM lotes l
+    INNER JOIN produtos p ON l.id_produto = p.id_produto
+    WHERE p.id_usuario = :id
+      AND p.ativo = TRUE
+      AND l.quantidade_atual > 0
+      AND l.validade <= (CURRENT_DATE + 7)
+    ORDER BY l.validade ASC;
+"""),
             {"id": id_usuario}
         ).mappings().all()
 
@@ -85,4 +124,3 @@ class InicioRepository:
             }
             for linha in resultado
         ]
-

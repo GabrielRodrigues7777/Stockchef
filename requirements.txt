@@ -1,8 +1,12 @@
 flask
 flask-sqlalchemy
-pymysql
+psycopg2-binary>=2.9,<3
 werkzeug
 google-generativeai
+# Compatibilidade do SDK legado Gemini com protobuf 5; evita backtracking longo.
+google-api-core>=2.24,<2.25
+googleapis-common-protos>=1.69.2,<1.71
+grpcio-status>=1.71,<1.72
 
 gunicorn; sys_platform != 'win32'
 waitress; sys_platform == 'win32'

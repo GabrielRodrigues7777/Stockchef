@@ -1,9 +1,8 @@
 from sqlalchemy import text
 from backend.models.usuario import db
 
-
 class EstoqueRepository:
-    """Executa a procedure de estoque detalhado e agrupa os lotes por produto."""
+    """Consulta o estoque detalhado e agrupa os lotes por produto."""
 
     @staticmethod
     def listar_estoque(id_usuario):
@@ -12,7 +11,25 @@ class EstoqueRepository:
         o resultado em uma lista de produtos, cada um com sua lista de lotes.
         """
         resultado = db.session.execute(
-            text("CALL sp_listar_estoque_detalhado(:id)"),
+            text("""
+SELECT
+        p.id_produto,
+        p.nome AS produto,
+        c.nome AS categoria,
+        u.sigla AS unidade,
+        p.estoque_minimo AS valor_minimo,
+        l.id_lote,
+        l.numero_lote,
+        l.quantidade_atual,
+        l.validade
+    FROM produtos p
+    INNER JOIN categorias c ON p.id_categoria = c.id_categoria
+    INNER JOIN unidades_medida u ON p.id_unidade = u.id_unidade
+    LEFT JOIN lotes l ON p.id_produto = l.id_produto
+    WHERE p.id_usuario = :id
+      AND p.ativo = TRUE
+    ORDER BY p.nome, l.validade;
+"""),
             {"id": id_usuario}
         ).mappings().all()
 

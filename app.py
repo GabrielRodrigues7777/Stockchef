@@ -67,7 +67,7 @@ app.register_blueprint(ia_bp)
 def init_db():
     """Cria tabelas ausentes. Procedures e dados iniciais requerem importacao SQL."""
     db.create_all()
-    print('Tabelas verificadas. Confira tambem as procedures MySQL.')
+    print('Tabelas verificadas. No Supabase, use a migracao SQL para aplicar RLS e catalogos.')
 
 
 @app.get('/healthz')

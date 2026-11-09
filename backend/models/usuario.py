@@ -9,7 +9,7 @@ class Usuario(db.Model):
     nome = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(150), nullable=False, unique=True)
     senha = db.Column(db.String(255), nullable=False)
-    tipo = db.Column(db.Enum('Administrador', 'Funcionario'), nullable=False)
+    tipo = db.Column(db.Enum('Administrador', 'Funcionario', native_enum=False), nullable=False)
     ativo = db.Column(db.Boolean, nullable=False, default=True)
 
     # ---------------------- Multi-tenant / vínculo com estabelecimento ----------------------
@@ -29,7 +29,7 @@ class Usuario(db.Model):
     # Funcionario nasce 'Pendente' e só pode operar no sistema após o
     # Administrador do estabelecimento aprová-lo.
     status = db.Column(
-        db.Enum('Pendente', 'Aprovado', 'Recusado'),
+        db.Enum('Pendente', 'Aprovado', 'Recusado', native_enum=False),
         nullable=False,
         default='Aprovado',
     )
@@ -38,7 +38,7 @@ class Usuario(db.Model):
     # ainda precisa ser exibido; True = a pessoa já aceitou e não é perguntado
     # de novo (a escolha fica salva no banco, por usuário).
     camera_autorizada = db.Column(
-        db.Boolean, nullable=False, default=False, server_default=db.text('0')
+        db.Boolean, nullable=False, default=False, server_default=db.false()
     )
 
     # ---------------------- CRUD ----------------------

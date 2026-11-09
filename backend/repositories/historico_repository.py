@@ -2,7 +2,7 @@ from sqlalchemy import text
 from backend.models.usuario import db
 
 # Mapeia os valores usados no front-end para os códigos numéricos que as
-# procedures do banco esperam (veja backend/database/procedures/procedures.sql).
+# filtros de consulta esperam.
 MAPA_FILTRO_DATA = {
     'hoje': 0,
     'semana': 1,
@@ -15,23 +15,36 @@ MAPA_FILTRO_TIPO = {
     'todos': 2,
 }
 
-
 class HistoricoRepository:
-    """Executa as procedures do banco relacionadas ao módulo Histórico."""
+    """Executa consultas SQL do banco relacionadas ao módulo Histórico."""
 
     @staticmethod
     def get_resumo(id_usuario):
         """
-        Executa sp_historico_total_entradas e sp_historico_total_saidas
+        Soma entradas e saidas
         para o usuário logado.
         """
         entradas = db.session.execute(
-            text("CALL sp_historico_total_entradas(:id)"),
+            text("""
+SELECT COALESCE(SUM(mi.quantidade), 0) AS total_acumulado_entradas
+    FROM movimentacoes m
+    INNER JOIN movimentacao_itens mi ON m.id_movimentacao = mi.id_movimentacao
+    INNER JOIN produtos p ON mi.id_produto = p.id_produto
+    WHERE p.id_usuario = :id
+      AND m.tipo = 'Entrada';
+"""),
             {"id": id_usuario}
         ).mappings().first()
 
         saidas = db.session.execute(
-            text("CALL sp_historico_total_saidas(:id)"),
+            text("""
+SELECT COALESCE(SUM(mi.quantidade), 0) AS total_acumulado_saidas
+    FROM movimentacoes m
+    INNER JOIN movimentacao_itens mi ON m.id_movimentacao = mi.id_movimentacao
+    INNER JOIN produtos p ON mi.id_produto = p.id_produto
+    WHERE p.id_usuario = :id
+      AND m.tipo = 'Saida';
+"""),
             {"id": id_usuario}
         ).mappings().first()
 
@@ -45,14 +58,42 @@ class HistoricoRepository:
     @staticmethod
     def listar_movimentacoes(id_usuario, filtro_data='todos', filtro_tipo='todos'):
         """
-        Executa sp_historico_listar_movimentacoes convertendo os filtros
-        recebidos (strings) para os códigos numéricos da procedure.
+        Lista movimentacoes convertendo os filtros
+        recebidos (strings) para os codigos numericos da consulta.
         """
         codigo_data = MAPA_FILTRO_DATA.get(filtro_data, 2)
         codigo_tipo = MAPA_FILTRO_TIPO.get(filtro_tipo, 2)
 
         resultado = db.session.execute(
-            text("CALL sp_historico_listar_movimentacoes(:id, :data, :tipo)"),
+            text("""
+SELECT
+        p.nome AS nome_produto,
+        m.data_movimentacao AS data_registro,
+        m.tipo AS tipo_movimentacao,
+        c.nome AS categoria,
+        u.sigla AS unidade,
+        mi.quantidade AS quantidade_movimentada
+    FROM movimentacoes m
+    INNER JOIN movimentacao_itens mi ON m.id_movimentacao = mi.id_movimentacao
+    INNER JOIN produtos p ON mi.id_produto = p.id_produto
+    INNER JOIN categorias c ON p.id_categoria = c.id_categoria
+    INNER JOIN unidades_medida u ON p.id_unidade = u.id_unidade
+    WHERE p.id_usuario = :id
+
+      AND (
+          :tipo = 2
+          OR (:tipo = 0 AND m.tipo = 'Entrada')
+          OR (:tipo = 1 AND m.tipo = 'Saida')
+      )
+
+      AND (
+          :data = 2
+          OR (:data = 0 AND DATE(m.data_movimentacao) = CURRENT_DATE)
+          OR (:data = 1 AND m.data_movimentacao >= date_trunc('week', CURRENT_DATE))
+      )
+
+    ORDER BY m.data_movimentacao DESC;
+"""),
             {"id": id_usuario, "data": codigo_data, "tipo": codigo_tipo}
         ).mappings().all()
 

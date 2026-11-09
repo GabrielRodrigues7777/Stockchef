@@ -7,7 +7,7 @@ class Movimentacao(db.Model):
 
     id_movimentacao = db.Column(db.Integer, primary_key=True, autoincrement=True)
     id_usuario = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
-    tipo = db.Column(db.Enum('Entrada', 'Saida', 'Ajuste'), nullable=False)
+    tipo = db.Column(db.Enum('Entrada', 'Saida', 'Ajuste', native_enum=False), nullable=False)
     data_movimentacao = db.Column(db.DateTime, default=datetime.utcnow)
     observacao = db.Column(db.Text)
 

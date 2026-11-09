@@ -1,46 +1,59 @@
 # StockChef
 
-Sistema de controle de estoque para restaurantes, desenvolvido com Python/Flask,
-SQLAlchemy e frontend HTML, CSS e JavaScript servido pelo Flask.
+Controle de estoque de restaurantes: Flask, SQLAlchemy, HTML/CSS/JavaScript.
+Esta versao usa PostgreSQL e esta preparada para Render + Supabase.
 
-## Estado desta versao
+## Banco
 
-Base preparada para hospedagem. O banco atual e MySQL; a adaptacao para
-PostgreSQL/Supabase ainda esta pendente. Esta versao nao deve ser considerada
-uma publicacao funcional sem configurar e validar o banco.
+Em um projeto Supabase vazio, abra SQL Editor > New query e execute
+backend/migrations/001_supabase.sql uma unica vez. O script cria 20 tabelas,
+relacionamentos e catalogos iniciais. Nao importa dados nem contas do MySQL.
+Nao apaga tabelas existentes; se houver conflito de nomes, pare e revise.
+As oito consultas antes executadas por procedures agora sao SELECTs no backend.
+Enums dos models usam VARCHAR; o script aplica CHECK para os valores permitidos.
 
-Os scripts MySQL originais ficaram fora deste repositorio publico porque
-contem dados pessoais e hashes de senhas de exemplo. Uma versao revisada
-para inicializacao do banco deve ser adicionada antes da publicacao.
+RLS esta habilitado sem politicas para anon/authenticated: o frontend nao acessa
+o Supabase diretamente. O login e as sessoes continuam no Flask. A conexao usada
+no backend e a do Session pooler com usuario postgres.<project-ref> e senha do banco,
+que devem ser mantidos apenas no servidor. Nao use a chave publishable no lugar disso.
 
-## Configuracao
+## Render
 
-Requer Python 3.10 ou superior e dependencias de requirements.txt.
-Defina as variaveis de .env.example no ambiente do processo ou no painel
-da hospedagem. Arquivos .env nao sao carregados automaticamente.
-SECRET_KEY e obrigatoria e deve ser longa, aleatoria e mantida em segredo.
+Conecte o repositorio GitHub a um Web Service Python no plano Free:
 
-Linux / Render:
+- Build: pip install -r requirements.txt
+- Start: gunicorn app:app --bind 0.0.0.0:$PORT
+- Health check: /healthz (confirma processo; nao verifica o banco)
+- Python: 3.12.10
 
-```sh
-pip install -r requirements.txt
-gunicorn app:app --bind 0.0.0.0:$PORT
-```
+Alternativamente, use render.yaml para criar um Blueprint, conferindo o plano Free.
+Defina SECRET_KEY com um valor longo, aleatorio e estavel.
+Defina DB_HOST, DB_USER e DB_PASSWORD com os valores do Session pooler;
+DB_PORT=5432, DB_NAME=postgres, DB_SSLMODE=require e COOKIE_SECURE=true.
+Nao configure DATABASE_URL junto de DB_*: DATABASE_URL tem prioridade.
+Os campos DB_* evitam ter de codificar caracteres especiais da senha em uma URL.
 
-Windows:
+.env.example e apenas referencia: arquivos .env nao sao carregados automaticamente.
+A senha nunca deve ir para o Git. GEMINI_API_KEY e opcional e requer teste separado.
 
-```powershell
-pip install -r requirements.txt
-waitress-serve --listen=127.0.0.1:8000 app:app
-```
+## Primeiro acesso
 
-Mantenha COOKIE_SECURE=true em HTTPS. Para testar login em HTTP local,
-defina COOKIE_SECURE=false apenas no ambiente local.
+Abra /cadastro, crie um Administrador com sua propria senha e entre em /login.
+Cadastre produtos e registre entradas com validade para preparar a apresentacao.
+O script nao cria produtos, usuarios nem movimentacoes automaticamente.
 
-O endpoint /healthz verifica o processo Flask, nao a conexao com o banco.
-O comando flask --app app init-db cria tabelas ausentes, mas nao instala
-procedures e nao substitui migracoes nem restauracao de dados.
+## Verificacao
 
-A integracao de IA exige GEMINI_API_KEY e validacao separada.
-Login, cadastro, produtos e movimentacoes ainda precisam de validacao
-no ambiente de publicacao. Nao coloque senhas, tokens ou dados pessoais no Git.
+O SQL e as oito consultas foram executados localmente em PostgreSQL embarcado
+(PGlite), incluindo filtros e isolamento das consultas por estabelecimento.
+Cadastro, login, cookies, produtos, entrada e saida de estoque foram testados no Flask com SQLite; os models tambem compilam para PostgreSQL. Isso nao substitui validar a conexao real do Render ao Supabase e testar os fluxos
+na URL publica. A integracao Gemini nao foi validada.
+A versao nao constitui uma auditoria completa de autorizacao de todos os endpoints.
+
+## Dominio e dados
+
+Valide primeiro o endereco onrender.com. Depois adicione stockchef.dev.br em
+Settings > Custom Domains do Render e aplique no Registro.br os registros indicados.
+Aguarde validacao do DNS e emissao do HTTPS. O servico gratuito pode dormir sem trafego.
+Mantenha backups externos e teste restauracao; nao grave dados persistentes em disco
+local do servico. O MySQL original permanece separado e inalterado.

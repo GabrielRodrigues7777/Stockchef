@@ -1,55 +1,59 @@
-# Publicacao para demonstracao
+# StockChef
 
-Esta e uma copia preparada; o projeto original foi preservado.
-Ainda nao houve publicacao nem validacao de login/estoque nesta sessao.
+Controle de estoque de restaurantes: Flask, SQLAlchemy, HTML/CSS/JavaScript.
+Esta versao usa PostgreSQL e esta preparada para Render + Supabase.
 
-## Caminho curto: PC atual + Cloudflare Tunnel
+## Banco
 
-O apresentador acessa o dominio em qualquer computador. O PC de origem fica
-ligado, sem suspensao, conectado a internet, executando MySQL, Flask e cloudflared.
-O dominio precisa estar ativo no Cloudflare para o tunel com nome proprio.
-Nao exponha a porta do MySQL na internet.
+Em um projeto Supabase vazio, abra SQL Editor > New query e execute
+backend/migrations/001_supabase.sql uma unica vez. O script cria 20 tabelas,
+relacionamentos e catalogos iniciais. Nao importa dados nem contas do MySQL.
+Nao apaga tabelas existentes; se houver conflito de nomes, pare e revise.
+As oito consultas antes executadas por procedures agora sao SELECTs no backend.
+Enums dos models usam VARCHAR; o script aplica CHECK para os valores permitidos.
 
-1. Use Python 3.10 ou superior. Crie um ambiente virtual e instale requirements.txt.
-2. Defina SECRET_KEY com um segredo aleatorio longo e estavel; configure DB_HOST,
-   DB_PORT, DB_NAME, DB_USER e DB_PASSWORD no ambiente do processo.
-   Use um usuario MySQL proprio com os privilegios necessarios ao aplicativo,
-   incluindo EXECUTE para as procedures utilizadas.
-3. Mantenha COOKIE_SECURE=true no acesso publico HTTPS.
-   Para testar login exclusivamente em HTTP local, use COOKIE_SECURE=false.
-4. No Windows, inicie: waitress-serve --listen=127.0.0.1:8000 app:app
-5. Configure um Cloudflare Tunnel para encaminhar o dominio escolhido para
-   http://localhost:8000. O processo cloudflared deve continuar ativo.
-6. Teste a URL em outra rede e valide cadastro, login, produtos, entrada e saida
-   de estoque e historico. Teste IA separadamente se GEMINI_API_KEY estiver definida.
+RLS esta habilitado sem politicas para anon/authenticated: o frontend nao acessa
+o Supabase diretamente. O login e as sessoes continuam no Flask. A conexao usada
+no backend e a do Session pooler com usuario postgres.<project-ref> e senha do banco,
+que devem ser mantidos apenas no servidor. Nao use a chave publishable no lugar disso.
 
-Os valores de .env.example devem ser definidos no ambiente: o aplicativo nao
-carrega arquivos .env automaticamente. Nao publique credenciais nem tokens.
+## Render
 
-## Hospedagem independente
+Conecte o repositorio GitHub a um Web Service Python no plano Free:
 
-Preserve MySQL para esta demonstracao: existem chamadas CALL nas funcionalidades.
-Em Linux, o servidor pode iniciar com:
-gunicorn --bind 0.0.0.0:$PORT app:app
-O MySQL precisa estar acessivel pelo backend e conter as procedures do projeto.
+- Build: pip install -r requirements.txt
+- Start: gunicorn app:app --bind 0.0.0.0:$PORT
+- Health check: /healthz (confirma processo; nao verifica o banco)
+- Python: 3.12.10
 
-## Banco existente
+Alternativamente, use render.yaml para criar um Blueprint, conferindo o plano Free.
+Defina SECRET_KEY com um valor longo, aleatorio e estavel.
+Defina DB_HOST, DB_USER e DB_PASSWORD com os valores do Session pooler;
+DB_PORT=5432, DB_NAME=postgres, DB_SSLMODE=require e COOKIE_SECURE=true.
+Nao configure DATABASE_URL junto de DB_*: DATABASE_URL tem prioridade.
+Os campos DB_* evitam ter de codificar caracteres especiais da senha em uma URL.
 
-NAO execute backend/database/rodar_tudo_de_uma_vez.sql em um banco com dados:
-o arquivo contem DROP DATABASE IF EXISTS stockchef.
-Para transportar o banco atual, faca backup completo com routines e triggers,
-restaure em um destino separado e valide antes de trocar a conexao.
-O comando flask --app app init-db cria apenas tabelas ausentes: ele nao substitui
-a importacao de procedures, dados nem uma migracao de esquema.
+.env.example e apenas referencia: arquivos .env nao sao carregados automaticamente.
+A senha nunca deve ir para o Git. GEMINI_API_KEY e opcional e requer teste separado.
 
-## Alteracoes desta copia
+## Primeiro acesso
 
-- Credenciais e chave de sessao saem do codigo e passam para variaveis de ambiente.
-- Ausencia de SECRET_KEY interrompe a inicializacao com mensagem explicita.
-- Debug desativado e abertura automatica de navegador removida.
-- Waitress para Windows e Gunicorn para Linux nas dependencias.
-- Comando explicito init-db e endpoint /healthz (confirma processo, nao o banco).
-- Cookies HttpOnly, SameSite=Lax e Secure por padrao.
+Abra /cadastro, crie um Administrador com sua propria senha e entre em /login.
+Cadastre produtos e registre entradas com validade para preparar a apresentacao.
+O script nao cria produtos, usuarios nem movimentacoes automaticamente.
 
-Verificacao limitada: os arquivos foram inspecionados, mas o aplicativo nao foi
-executado nesta sessao. Estes ajustes nao constituem auditoria completa de seguranca.
+## Verificacao
+
+O SQL e as oito consultas foram executados localmente em PostgreSQL embarcado
+(PGlite), incluindo filtros e isolamento das consultas por estabelecimento.
+Cadastro, login, cookies, produtos, entrada e saida de estoque foram testados no Flask com SQLite; os models tambem compilam para PostgreSQL. Isso nao substitui validar a conexao real do Render ao Supabase e testar os fluxos
+na URL publica. A integracao Gemini nao foi validada.
+A versao nao constitui uma auditoria completa de autorizacao de todos os endpoints.
+
+## Dominio e dados
+
+Valide primeiro o endereco onrender.com. Depois adicione stockchef.dev.br em
+Settings > Custom Domains do Render e aplique no Registro.br os registros indicados.
+Aguarde validacao do DNS e emissao do HTTPS. O servico gratuito pode dormir sem trafego.
+Mantenha backups externos e teste restauracao; nao grave dados persistentes em disco
+local do servico. O MySQL original permanece separado e inalterado.
